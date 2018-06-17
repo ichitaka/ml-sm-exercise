@@ -1,4 +1,4 @@
-#%%%
+#%%% #################### * CELL * ####################
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -38,7 +38,7 @@ print(input_data)
 
 training_ = np.matrix(np.repeat(1,20))
 print(training_)
-#%%
+#%% #################### * CELL * ####################
 def root_mean_square(poly, target, deg):
     linrange = target[:,0]
     targets = target[:,1]
@@ -94,7 +94,7 @@ plt.plot(polyrange, errors_test, color='blue')
 plt.plot(polyrange, errors_train, color='red')
 plt.show()
 
-#%%
+#%% #################### * CELL * ####################
 
 def plot_helper(ran):
     output = []
@@ -112,3 +112,33 @@ plt.scatter(scatter_data[:,0],scatter_data[:,1])
 plt.plot(plot_range, plot_helper(plot_range))
 
 plt.show()
+
+#%% #################### * CELL * ####################
+    #################### * 1 b  * ####################
+def gaussian(x, mu, sig):
+    #return (1/np.sqrt(2*np.pi*sig**2))*np.exp((-1*(x-mu)**2)/(2*(sig**2)))
+    return np.exp((-1*(x-mu)**2)/(2*(sig**2)))
+
+all_mu = np.arange(0,2,(2/20))
+var = 0.02
+
+def calc_y(x):
+    y = 0
+    for mu in all_mu:
+        y = y + gaussian(x, mu, var)
+    return y
+
+print(calc_y(2))
+
+def calc_features(x):
+    all_features = []
+    for data in x:
+        feature = []
+        for mu in all_mu:
+            feature.append(gaussian(data, mu, var))
+        all_features.append(feature)
+    return all_features
+
+# might need further plots. btw no weights were learned.
+# at x = 2 the condition of sum(g(x)) = 1 is not satisfied. 
+plt.matshow(calc_features(input_data))
