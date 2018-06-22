@@ -98,9 +98,9 @@ plt.show()
 
 def plot_helper(ran):
     output = []
-    best_weights = get_weights(input_data, output_data, 9)
+    best_weights = get_weights(input_data, output_data, 11)
     for x in ran:
-        output.append(prediction(best_weights, x, 9))
+        output.append(prediction(best_weights, x, 11))
     return np.reshape(output, np.shape(output)[0])
 
 scatter_data = np.array(data)
@@ -128,7 +128,7 @@ def calc_y(x):
         y = y + gaussian(x, mu, var)
     return y
 
-print(calc_y(2))
+print(calc_y(0.5))
 
 def calc_features(x):
     all_features = []
@@ -142,3 +142,151 @@ def calc_features(x):
 # might need further plots. btw no weights were learned.
 # at x = 2 the condition of sum(g(x)) = 1 is not satisfied. 
 plt.matshow(calc_features(input_data))
+
+#%% #################### * CELL * ####################
+    #################### * 1 c  * ####################
+
+input_data, output_data = training[:, 0], training[:, 1]
+input_data, output_data = scatter_data[:,0] ,scatter_data[:,1]
+
+# ? This function might need a transpose
+def get_phi(x, num_features):
+    mu_range = np.arange(0,2,(2/num_features))
+    phi = []
+    for data in x:
+        features = []
+        features.append(1)
+        for mu in mu_range:
+            features.append(gaussian(data, mu, var))
+        phi.append(features)
+    return np.matrix(phi).T
+
+def get_weights_2(x,y):
+    Y = np.transpose(np.matrix(y))
+    return np.matmul(np.matmul(np.linalg.inv(np.matmul(x
+                                                    ,np.transpose(x))),
+                                x),
+                    Y)
+number_of_features = 20
+
+# ! weights look like real data in a plot
+# ! using all data
+plt.figure()
+plt.scatter(input_data, output_data)
+plt.plot(get_weights_2(get_phi(input_data,number_of_features), output_data))
+
+
+def single_phi(x, num_features):
+    mu_range = np.arange(0,2,(2/num_features))
+    phi = []
+    phi.append(1)
+    for mu in mu_range:
+        phi.append(gaussian(x, mu, var))
+    return np.matrix(phi).T
+
+def plot_helper_2(r, num_feat):
+    output = []
+    weights = get_weights_2(get_phi(input_data, num_feat), output_data)
+    for x in r:
+        value = np.matmul(np.transpose(weights), single_phi(x, num_feat))
+        output.append(value.tolist()[0][0])
+    return output
+
+print_1 = plot_helper_2(plot_range, number_of_features)
+
+plt.figure()
+plt.scatter(input_data, output_data)
+
+plt.plot(plot_range, print_1)
+
+def root_mean_square_gauss(weights, target, num_feat):
+    linrange = target[:,0]
+    targets = target[:,1]
+    pred = []
+    pred = plot_helper_2(linrange, num_feat)
+    error = []
+    square_sum_weights = np.sum(weights[0][:1]**2)
+    l = 0.000001
+    for idx, x in enumerate(pred):
+        error.append((pred[idx]-targets[idx])**2)
+    return np.sqrt(np.sum(error)*1/len(targets))+l*square_sum_weights
+
+errors = []
+# ! currently done on all data
+for num_feat in range(15,41):
+    phi = get_phi(input_data, num_feat)
+    weights = get_weights_2(phi,output_data)
+    err_all = root_mean_square_gauss(weights, scatter_data, num_feat)
+    errors.append(err_all)
+
+    print(str(num_feat) + ': ' + str(err_all) + '    shape:' + str(np.shape(weights)))
+
+print('degree of min loss: ' + str(np.argmin(errors)+15))
+
+plt.figure()
+plt.plot(errors)
+
+#%% #################### * CELL * ####################
+    #################### * 1 d  * ####################
+
+REGULIZER = 0.000001
+BETA = 1/0.0025
+#ALPHA = 0.0004
+ALPHA = REGULIZER*BETA
+POLY_DEGREE = 11
+NUM_DATA_POINTS = 15
+
+def get_weights_MAP(data, deg, target):
+    design_matrix = get_design_matrix(data, deg)
+    return np.matmul(np.matmul(np.linalg.inv(np.add(np.matmul(design_matrix.T,
+                                                            design_matrix),
+                                                    np.multiply(REGULIZER,
+                                                    np.identity(np.shape(design_matrix)[1])))),
+                            design_matrix.T),
+                    target)
+
+def get_features(x, deg):
+    output = []
+    for exp in range(deg+1):
+        output.append(x**exp)
+    return np.array(output)
+
+def get_design_matrix(data, deg):
+    output = []
+    for x in data:
+        output.append(get_features(x, deg))
+    return np.matrix(output)
+
+def plot_helper_3(data, weights, deg):
+    output = []
+    for x in data:
+        output.append(np.matmul(weights, get_features(x, deg)))
+    return output
+
+def plot_helper_4(training_data, data, deg):
+    output = []
+    design_matrix = get_design_matrix(training_data, POLY_DEGREE)
+    s_n = np.linalg.inv(np.add(np.multiply(ALPHA, np.identity(np.shape(design_matrix)[1])), np.multiply(BETA, np.matmul(design_matrix.T, design_matrix))))
+    for x in data:
+        curr_features = get_features(x, deg)
+        output.append(1/BETA+np.matmul(np.matmul(curr_features.T, s_n), curr_features))
+    return output
+
+input_data, output_data = scatter_data[:NUM_DATA_POINTS, 0], scatter_data[:NUM_DATA_POINTS, 1]
+
+
+CURVE = np.reshape(plot_helper_3(plot_range, get_weights_MAP(input_data, POLY_DEGREE, output_data),POLY_DEGREE),200)
+UNCERTAINTY = np.reshape(plot_helper_4(input_data, plot_range, POLY_DEGREE), 200)
+PLUS_UNCERTAINTY = np.add(CURVE, UNCERTAINTY)
+MINUS_UNVERTAINTY = np.subtract(CURVE, UNCERTAINTY)
+
+plt.figure()
+plt.plot(plot_range, CURVE)
+#plt.plot(plot_range, PLUS_UNCERTAINTY)
+plt.fill_between(plot_range, PLUS_UNCERTAINTY, MINUS_UNVERTAINTY, facecolor='lightsalmon')
+axes = plt.gca()
+axes.set_ylim([-2,2])
+#plt.fill(plot_range,PLUS_UNCERTAINTY, plot_range, MINUS_UNVERTAINTY)
+#plt.plot(plot_range, MINUS_UNVERTAINTY)
+
+plt.scatter(input_data, np.squeeze(np.asarray(output_data)))
